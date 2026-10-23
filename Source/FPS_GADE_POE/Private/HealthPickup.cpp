@@ -1,5 +1,4 @@
 #include "HealthPickup.h"
-#include "BotCharacter.h"
 #include "Components/SphereComponent.h"
 #include "Components/StaticMeshComponent.h"
 #include "Materials/MaterialInstanceDynamic.h"
@@ -9,6 +8,7 @@
 #include "UObject/ConstructorHelpers.h"
 #include "UObject/UnrealType.h"
 #include "TimerManager.h"
+#include "HealableInterface.h"
 
 namespace
 {
@@ -106,12 +106,11 @@ void AHealthPickup::TryPickup(AActor* Other)
 
 	bool bUsed = false;
 
-	if (ABotCharacter* Bot = Cast<ABotCharacter>(Pawn))
-	{
-		if (Bot->IsDead()) return;
-		Bot->Heal(HealAmount);               // capped at max health inside Heal
-		bUsed = true;
-	}
+    if (IHealableInterface* Healable = Cast<IHealableInterface>(Pawn))
+    {
+        Healable->Heal(HealAmount);          // capped at max health inside Heal
+        bUsed = true;
+    }
 	else if (Pawn->IsPlayerControlled())
 	{
 		bUsed = HealPlayerBlueprint(Pawn);

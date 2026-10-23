@@ -6,7 +6,54 @@
 #include "GameFramework/DamageType.h"
 #include "DrawDebugHelpers.h"
 #include "AIController.h"
+#include "TimerManager.h" 
+#include "Components/CapsuleComponent.h"
+    
+void ABotCharacter::BeginPlay()
+{
+    Super::BeginPlay();
 
+    // Safety net: if the Blueprint lost its AI controller, create one
+    if (!GetController())
+    {
+        UE_LOG(LogTemp, Warning, TEXT("%s had no controller, spawning one."), *GetName());
+        if (!AIControllerClass) { AIControllerClass = ABotAIController::StaticClass(); }
+        SpawnDefaultController();
+    }
+
+    GetCapsuleComponent()->OnComponentBeginOverlap.AddDynamic(this, &ABotCharacter::OnCapsuleOverlap);
+}
+
+void ABotCharacter::OnCapsuleOverlap(UPrimitiveComponent* OverlappedComp, AActor* OtherActor, UPrimitiveComponent* OtherComp,
+    int32 OtherBodyIndex, bool bFromSweep, const FHitResult& SweepResult)
+{
+    CollectPickup(OtherActor);
+}
+
+void ABotCharacter::CollectPickup(AActor* Pickup)
+{
+    if (bDead || !Pickup || Pickup->IsHidden() || !Pickup->ActorHasTag(TEXT("AmmoPickup")) || !NeedsAmmo())
+    {
+        return;
+    }
+
+    GiveAmmo(AmmoPickupAmount);
+
+    // Hide it like a collected pickup, then bring it back after a delay
+    Pickup->SetActorHiddenInGame(true);
+    Pickup->SetActorEnableCollision(false);
+
+    TWeakObjectPtr<AActor> Weak = Pickup;
+    FTimerHandle Handle;
+    GetWorldTimerManager().SetTimer(Handle, FTimerDelegate::CreateWeakLambda(Pickup, [Weak]()
+        {
+            if (AActor* P = Weak.Get())
+            {
+                P->SetActorHiddenInGame(false);
+                P->SetActorEnableCollision(true);
+            }
+        }), PickupReappearTime, false);
+}
 ABotCharacter::ABotCharacter()
 {
 	AIControllerClass = ABotAIController::StaticClass();
@@ -38,7 +85,7 @@ float ABotCharacter::TakeDamage(float DamageAmount, FDamageEvent const& DamageEv
 
 	if (ABotAIController* AI = Cast<ABotAIController>(GetController()))
 	{
-		AI->ReactToDamage(Attacker);
+        OnBotDamaged.Broadcast(Attacker);
 	}
 	return Applied;
 }

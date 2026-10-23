@@ -2,14 +2,30 @@
 
 #include "CoreMinimal.h"
 #include "GameFramework/Character.h"
+#include "HealableInterface.h"
 #include "BotCharacter.generated.h"
 
 DECLARE_MULTICAST_DELEGATE_TwoParams(FBotDiedEvent, class ABotCharacter* /*Bot*/, AActor* /*Killer*/);
+DECLARE_MULTICAST_DELEGATE_OneParam(FBotDamagedEvent, AActor* /*Attacker*/);
 
 UCLASS()
-class ABotCharacter : public ACharacter
+class ABotCharacter : public ACharacter, public IHealableInterface
 {
 	GENERATED_BODY()
+
+protected:
+    virtual void BeginPlay() override;
+
+    UFUNCTION()
+    void OnCapsuleOverlap(UPrimitiveComponent* OverlappedComp, AActor* OtherActor, UPrimitiveComponent* OtherComp,
+        int32 OtherBodyIndex, bool bFromSweep, const FHitResult& SweepResult);
+
+    UPROPERTY(EditAnywhere, Category = "Bot|Pickups") int32 AmmoPickupAmount = 30;
+    UPROPERTY(EditAnywhere, Category = "Bot|Pickups") float PickupReappearTime = 15.f;
+
+public:
+    /** Collects an actor tagged "AmmoPickup" (e.g. BP_WeaponPickup): gives the secondary firearm + ammo. */
+    void CollectPickup(AActor* Pickup);
 
 public:
 	ABotCharacter();
@@ -23,7 +39,7 @@ public:
 	bool NeedsAmmo() const { return !bHasSecondary || SecondaryAmmo < MaxSecondaryAmmo / 2; }
 
 	// Called by pickups
-	float Heal(float Amount);
+    virtual float Heal(float Amount) override;
 	bool GiveAmmo(int32 Amount);
 
 	void ResetBot();                 // full health, no secondary (call on respawn)
@@ -34,6 +50,7 @@ public:
 	float GetHealth() const { return Health; }
 
 	FBotDiedEvent OnBotDied;
+    FBotDamagedEvent OnBotDamaged;
 
 protected:
 	UPROPERTY(EditAnywhere, Category = "Bot|Health") float MaxHealth = 100.f;

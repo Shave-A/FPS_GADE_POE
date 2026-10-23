@@ -6,6 +6,7 @@
 #include "TimerManager.h"
 #include "Engine/World.h"
 #include "EngineUtils.h"
+#include "DrawDebugHelpers.h"
 
 ABotAIController::ABotAIController()
 {
@@ -14,8 +15,10 @@ ABotAIController::ABotAIController()
 
 void ABotAIController::OnPossess(APawn* InPawn)
 {
+    if (Bot) { Bot->OnBotDamaged.RemoveAll(this); }
 	Super::OnPossess(InPawn);
 	Bot = Cast<ABotCharacter>(InPawn);
+    if (Bot) { Bot->OnBotDamaged.AddUObject(this, &ABotAIController::ReactToDamage); }
 	GetWorldTimerManager().SetTimer(ThinkTimer, this, &ABotAIController::Think,
 		ThinkInterval, true, FMath::FRandRange(0.05f, ThinkInterval));   // staggered per bot
 }
@@ -163,6 +166,7 @@ AActor* ABotAIController::FindVisiblePickup(const FName& Tag)
 	for (AActor* P : Found)
 	{
 		if (!P || P->IsHidden()) continue;                       // hidden = already collected
+        if (const float* Until = IgnoredPickups.Find(P)) { if (Now < *Until) continue; }
 		if (!CanSee(P, PickupSightRange, 85.f)) continue;
 		const float Sq = FVector::DistSquared(P->GetActorLocation(), GetPawn()->GetActorLocation());
 		if (Sq < BestSq) { BestSq = Sq; Best = P; }
@@ -230,16 +234,33 @@ void ABotAIController::DoEvade(AActor* Threat, AActor* HealthPickup)
 
 void ABotAIController::DoSeekPickup(AActor* Pickup, EBotState SeekState)
 {
-	SetState(SeekState);
-	Bot->SetRunning(true);
+    SetState(SeekState);
+    Bot->SetRunning(true);
 
-	if (CurrentPickup.Get() != Pickup)
-	{
-		CurrentPickup = Pickup;
-		PickupCommitUntil = GetWorld()->GetTimeSeconds() + 10.f;
-		StopMovement();
-	}
-	if (!IsMoving()) MoveToActor(Pickup, 20.f, false);
+    const float Now = GetWorld()->GetTimeSeconds();
+    if (CurrentPickup.Get() != Pickup)
+    {
+        CurrentPickup = Pickup;
+        PickupCommitUntil = Now + 10.f;
+        StopMovement();
+    }
+
+    // Ammo / weapon pickups are collected by the bot itself
+    if (Pickup->ActorHasTag(AmmoPickupTag) && FVector::Dist2D(Bot->GetActorLocation(), Pickup->GetActorLocation()) < 130.f)
+    {
+        Bot->CollectPickup(Pickup);
+        return;
+    }
+
+    if (!IsMoving())
+    {
+        if (MoveToActor(Pickup, 20.f, false) == EPathFollowingRequestResult::Failed)
+        {
+            // Can't reach it (off the nav mesh?): ignore it for 10s instead of freezing
+            IgnoredPickups.Add(Pickup, Now + 10.f);
+            CurrentPickup.Reset();
+        }
+    }
 }
 
 void ABotAIController::DoPatrol()

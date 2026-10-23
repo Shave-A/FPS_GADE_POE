@@ -67,6 +67,7 @@ private:
 	TWeakObjectPtr<AActor> CurrentTarget;
 	TWeakObjectPtr<AActor> CurrentPickup;
 	TWeakObjectPtr<AActor> AwarenessTarget;
+    TMap<TWeakObjectPtr<AActor>, float> IgnoredPickups;   // pickups it could not path to, ignored for a while
 
 	FTimerHandle ThinkTimer;
 	float AwarenessExpire = 0.f;
