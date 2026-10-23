@@ -5,6 +5,7 @@
 #include "Kismet/GameplayStatics.h"
 #include "GameFramework/DamageType.h"
 #include "DrawDebugHelpers.h"
+#include "AIController.h"
 
 ABotCharacter::ABotCharacter()
 {
@@ -21,23 +22,42 @@ ABotCharacter::ABotCharacter()
 float ABotCharacter::TakeDamage(float DamageAmount, FDamageEvent const& DamageEvent,
 	AController* EventInstigator, AActor* DamageCauser)
 {
+	if (bDead) return 0.f;
+
 	const float Applied = Super::TakeDamage(DamageAmount, DamageEvent, EventInstigator, DamageCauser);
-	if (bDead || Applied <= 0.f) return 0.f;
+	if (Applied <= 0.f) return 0.f;
 
 	Health = FMath::Clamp(Health - Applied, 0.f, MaxHealth);
-
 	AActor* Attacker = EventInstigator ? EventInstigator->GetPawn() : DamageCauser;
+
+	if (Health <= 0.f)
+	{
+		Die(Attacker);
+		return Applied;
+	}
+
 	if (ABotAIController* AI = Cast<ABotAIController>(GetController()))
 	{
 		AI->ReactToDamage(Attacker);
 	}
-
-	if (Health <= 0.f)
-	{
-		bDead = true;
-		OnBotDied.Broadcast(this, Attacker);
-	}
 	return Applied;
+}
+
+void ABotCharacter::Die(AActor* Killer)
+{
+	bDead = true;
+
+	if (AAIController* AI = Cast<AAIController>(GetController()))
+	{
+		AI->StopMovement();
+	}
+	GetCharacterMovement()->StopMovementImmediately();
+	GetCharacterMovement()->DisableMovement();
+
+	SetActorEnableCollision(false);   // can't be shot or block anyone
+	SetActorHiddenInGame(true);       // gone from the arena
+
+	OnBotDied.Broadcast(this, Killer);
 }
 
 bool ABotCharacter::FireAt(const FVector& AimPoint)
@@ -101,6 +121,10 @@ void ABotCharacter::ResetBot()
 	bHasSecondary = false;
 	SecondaryAmmo = 0;
 	NextFireTime = 0.f;
+
+	SetActorHiddenInGame(false);
+	SetActorEnableCollision(true);
+	GetCharacterMovement()->SetMovementMode(MOVE_Walking);
 	SetRunning(false);
 }
 

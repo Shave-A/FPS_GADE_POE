@@ -30,6 +30,7 @@ public:
 	void SetRunning(bool bRunning);
 
 	bool IsDead() const { return bDead; }
+	void Die(AActor* Killer);
 	float GetHealth() const { return Health; }
 
 	FBotDiedEvent OnBotDied;
