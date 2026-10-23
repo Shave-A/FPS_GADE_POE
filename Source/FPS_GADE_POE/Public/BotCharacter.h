@@ -13,6 +13,19 @@ class ABotCharacter : public ACharacter, public IHealableInterface
 {
 	GENERATED_BODY()
 
+public:
+    void Respawn();
+
+protected:
+    UPROPERTY(EditAnywhere, Category = "Bot|Respawn") float RespawnDelay = 20.f;
+    UPROPERTY(EditAnywhere, Category = "Bot|Respawn") FName RespawnTag = TEXT("RespawnPoint");
+
+    bool PickRespawnTransform(FVector& OutLocation, FRotator& OutRotation) const;
+
+    FTimerHandle RespawnTimer;
+    FVector StartLocation = FVector::ZeroVector;
+    FRotator StartRotation = FRotator::ZeroRotator;
+
 protected:
     virtual void BeginPlay() override;
 

@@ -13,6 +13,9 @@ void ABotCharacter::BeginPlay()
 {
     Super::BeginPlay();
 
+    StartLocation = GetActorLocation();
+    StartRotation = GetActorRotation();
+
     // Safety net: if the Blueprint lost its AI controller, create one
     if (!GetController())
     {
@@ -92,19 +95,22 @@ float ABotCharacter::TakeDamage(float DamageAmount, FDamageEvent const& DamageEv
 
 void ABotCharacter::Die(AActor* Killer)
 {
-	bDead = true;
+    bDead = true;
+    UE_LOG(LogTemp, Warning, TEXT("%s DIED, respawning in %.1f s"), *GetName(), RespawnDelay);
 
-	if (AAIController* AI = Cast<AAIController>(GetController()))
-	{
-		AI->StopMovement();
-	}
-	GetCharacterMovement()->StopMovementImmediately();
-	GetCharacterMovement()->DisableMovement();
+    if (AAIController* AI = Cast<AAIController>(GetController()))
+    {
+        AI->StopMovement();
+    }
+    GetCharacterMovement()->StopMovementImmediately();
+    GetCharacterMovement()->DisableMovement();
 
-	SetActorEnableCollision(false);   // can't be shot or block anyone
-	SetActorHiddenInGame(true);       // gone from the arena
+    SetActorEnableCollision(false);
+    SetActorHiddenInGame(true);
 
-	OnBotDied.Broadcast(this, Killer);
+    OnBotDied.Broadcast(this, Killer);
+
+    GetWorldTimerManager().SetTimer(RespawnTimer, this, &ABotCharacter::Respawn, FMath::Max(0.1f, RespawnDelay), false);
 }
 
 bool ABotCharacter::FireAt(const FVector& AimPoint)
@@ -159,6 +165,47 @@ bool ABotCharacter::GiveAmmo(int32 Amount)
 	bHasSecondary = true;                 // picking up ammo also gives the secondary firearm
 	SecondaryAmmo = FMath::Clamp(SecondaryAmmo + Amount, 0, MaxSecondaryAmmo);
 	return true;
+}
+
+bool ABotCharacter::PickRespawnTransform(FVector& OutLocation, FRotator& OutRotation) const
+{
+    TArray<AActor*> Points;
+    UGameplayStatics::GetAllActorsWithTag(this, RespawnTag, Points);
+    if (Points.Num() == 0) return false;
+
+    // Random pick among the points (prefer one nobody is standing on)
+    TArray<AActor*> Free;
+    const FCollisionShape Capsule = FCollisionShape::MakeCapsule(34.f, 88.f);
+    FCollisionObjectQueryParams PawnQuery(ECC_Pawn);
+    for (AActor* P : Points)
+    {
+        const FVector Loc = P->GetActorLocation() + FVector(0.f, 0.f, 100.f);
+        if (!GetWorld()->OverlapAnyTestByObjectType(Loc, FQuat::Identity, PawnQuery, Capsule))
+        {
+            Free.Add(P);
+        }
+    }
+
+    const TArray<AActor*>& Pool = Free.Num() > 0 ? Free : Points;
+    const AActor* Chosen = Pool[FMath::RandRange(0, Pool.Num() - 1)];
+    OutLocation = Chosen->GetActorLocation() + FVector(0.f, 0.f, GetCapsuleComponent()->GetScaledCapsuleHalfHeight());
+    OutRotation = FRotator(0.f, Chosen->GetActorRotation().Yaw, 0.f);
+    return true;
+}
+
+void ABotCharacter::Respawn()
+{
+    FVector Loc; FRotator Rot;
+    if (!PickRespawnTransform(Loc, Rot))
+    {
+        UE_LOG(LogTemp, Warning, TEXT("%s: no actors tagged '%s', respawning at its start location."), *GetName(), *RespawnTag.ToString());
+        Loc = StartLocation; Rot = StartRotation;
+    }
+
+    SetActorLocationAndRotation(Loc, Rot, false, nullptr, ETeleportType::TeleportPhysics);
+    if (AController* C = GetController()) { C->SetControlRotation(Rot); }
+
+    ResetBot();   // full health, no secondary weapon, visible again, collision back on
 }
 
 void ABotCharacter::ResetBot()
