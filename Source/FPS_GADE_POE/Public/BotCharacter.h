@@ -41,6 +41,10 @@ public:
     void CollectPickup(AActor* Pickup);
 
 public:
+
+    UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Bot")
+    FString DisplayName;
+
 	ABotCharacter();
 
 	virtual float TakeDamage(float DamageAmount, FDamageEvent const& DamageEvent,

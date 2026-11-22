@@ -8,7 +8,7 @@ public class FPS_GADE_POE : ModuleRules
 	{
 		PCHUsage = PCHUsageMode.UseExplicitOrSharedPCHs;
 
-        PublicDependencyModuleNames.AddRange(new string[] { "Core", "CoreUObject", "Engine", "InputCore", "AIModule", "NavigationSystem", "GameplayTasks" });
+        PublicDependencyModuleNames.AddRange(new string[] { "Core", "CoreUObject", "Engine", "InputCore", "AIModule", "NavigationSystem", "GameplayTasks", "UMG", "Slate", "SlateCore", "DeveloperSettings" });
 
         PrivateDependencyModuleNames.AddRange(new string[] {  });
 
