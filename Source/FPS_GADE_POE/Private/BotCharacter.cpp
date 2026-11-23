@@ -122,6 +122,7 @@ bool ABotCharacter::FireAt(const FVector& AimPoint)
 	const bool bSecondary = HasUsableSecondary();
 	if (bSecondary) { --SecondaryAmmo; }
 	NextFireTime = Now + (bSecondary ? SecondaryFireInterval : DefaultFireInterval);
+    if (++ShotsInBurst >= BurstSize) { ShotsInBurst = 0; NextFireTime += BurstPause; }
 	const float Damage = bSecondary ? SecondaryDamage : DefaultDamage;
 
 	FVector Start; FRotator Rot;
@@ -215,6 +216,7 @@ void ABotCharacter::ResetBot()
 	bHasSecondary = false;
 	SecondaryAmmo = 0;
 	NextFireTime = 0.f;
+    ShotsInBurst = 0;
 
 	SetActorHiddenInGame(false);
 	SetActorEnableCollision(true);

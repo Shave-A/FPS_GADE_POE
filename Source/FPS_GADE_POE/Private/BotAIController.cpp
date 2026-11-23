@@ -89,7 +89,13 @@ void ABotAIController::Think()
 	{
 		if (AActor* P = FindVisiblePickup(AmmoPickupTag)) { DoSeekPickup(P, EBotState::SeekAmmo); return; }
 	}
-	DoPatrol();
+    //Hunt the player
+    if (APawn* Prey = GetHuntTargetIfLastBot())
+    {
+        DoHunt(Prey);
+        return;
+    }
+    DoPatrol();
 }
 
 // ------------------------------------------------------------------ perception
@@ -138,11 +144,13 @@ AActor* ABotAIController::FindVisibleTarget()
 		APawn* C = *It;
 		if (!IsValidTarget(C)) continue;
 
-		const bool bAware = AwarenessTarget.Get() == C && Now < AwarenessExpire;   // shot by it -> any direction
-		if (!CanSee(C, SightRange, bAware ? 180.f : SightHalfAngle)) continue;
+        const float DistSq = FVector::DistSquared(C->GetActorLocation(), GetPawn()->GetActorLocation());
+        const bool bAware = AwarenessTarget.Get() == C && Now < AwarenessExpire;   // shot by it -> any direction
+        const bool bClose = DistSq < FMath::Square(CloseSenseRange);               // very close -> any direction
+        if (!CanSee(C, SightRange, (bAware || bClose) ? 180.f : SightHalfAngle)) continue;
 
-		const float Sq = FVector::DistSquared(C->GetActorLocation(), GetPawn()->GetActorLocation());
-		if (Sq < BestSq) { BestSq = Sq; Best = C; }
+        if (DistSq < BestSq) { BestSq = DistSq; Best = C; }
+
 	}
 	return Best;
 }
@@ -316,4 +324,30 @@ void ABotAIController::TickCombat()
 	{
 		Bot->FireAt(Target->GetActorLocation());
 	}
+}
+
+APawn* ABotAIController::GetHuntTargetIfLastBot() const
+{
+    APawn* Prey = nullptr;
+    for (TActorIterator<APawn> It(GetWorld()); It; ++It)
+    {
+        APawn* P = *It;
+        if (!IsValidTarget(P)) continue;
+        if (Cast<ABotCharacter>(P)) return nullptr;   // another bot is alive -> normal patrol
+        if (!Prey) Prey = P;
+    }
+    return Prey;
+}
+
+void ABotAIController::DoHunt(APawn* Prey)
+{
+    SetState(EBotState::Hunt);
+    Bot->SetRunning(true);
+    CurrentPickup.Reset();
+
+    const float Now = GetWorld()->GetTimeSeconds();
+    if (Now < NextHuntRepath && IsMoving()) return;
+    NextHuntRepath = Now + HuntRepathInterval;
+
+    MoveToActor(Prey, 600.f, true, true, false);   // walks towards the player; Attack takes over once it sees them
 }

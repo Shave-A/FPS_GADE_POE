@@ -37,12 +37,23 @@ void UMatchManager::StartMatch()
     bPaused = false;
     bMatchActive = true;
 
-    // Observer: listen to every bot's death. The bots know nothing about the match manager.
+    static const TCHAR* BotNames[] = { TEXT("Ruby"), TEXT("Sapphire"), TEXT("Emerald"), TEXT("Gold") };
+
+    // Sort by internal name so each bot gets the same leaderboard name every match
+    TArray<ABotCharacter*> Bots;
     for (TActorIterator<ABotCharacter> It(GetWorld()); It; ++It)
     {
-        ABotCharacter* Bot = *It;
+        Bots.Add(*It);
+    }
+    Bots.Sort([](const ABotCharacter& A, const ABotCharacter& B) { return A.GetName() < B.GetName(); });
+
+    for (int32 i = 0; i < Bots.Num(); ++i)
+    {
+        ABotCharacter* Bot = Bots[i];
+        Bot->DisplayName = (i < UE_ARRAY_COUNT(BotNames)) ? FString(BotNames[i]) : FString::Printf(TEXT("Bot %d"), i + 1);
+
         FLeaderboardEntry Entry;
-        Entry.Name = Bot->DisplayName.IsEmpty() ? Bot->GetName() : Bot->DisplayName;
+        Entry.Name = Bot->DisplayName;
         Entry.Actor = Bot;
         Entries.Add(Entry);
         Bot->OnBotDied.AddUObject(this, &UMatchManager::HandleBotDied);
