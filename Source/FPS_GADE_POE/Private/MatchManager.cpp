@@ -24,6 +24,12 @@ TStatId UMatchManager::GetStatId() const
 void UMatchManager::OnWorldBeginPlay(UWorld& InWorld)
 {
     Super::OnWorldBeginPlay(InWorld);
+    const FString MapName = UGameplayStatics::GetCurrentLevelName(&InWorld, true);
+    if (MapName == TEXT("FiringRange") || MapName == TEXT("MainMenu"))
+    {
+        return; // no match timer or match HUD outside the arena
+    }
+
     StartMatch();
 }
 
