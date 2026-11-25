@@ -41,7 +41,11 @@ namespace
 		return P->IsFloatingPoint() ? P->GetFloatingPointPropertyValue(Ptr) : (double)P->GetSignedIntPropertyValue(Ptr);
 	}
 
-	void WriteNumber(FNumericProperty* P, void* Ptr, double V)
+    bool bMatch = Normalise(It->GetName()) == Target;
+#if WITH_EDITOR
+    if (!bMatch) { bMatch = Normalise(It->GetDisplayNameText().ToString()) == Target; }
+#endif
+    if (bMatch)
 	{
 		if (P->IsFloatingPoint()) { P->SetFloatingPointPropertyValue(Ptr, V); }
 		else { P->SetIntPropertyValue(Ptr, (int64)FMath::RoundToInt(V)); }
