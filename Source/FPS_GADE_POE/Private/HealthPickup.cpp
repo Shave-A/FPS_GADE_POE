@@ -27,7 +27,7 @@ namespace
 		{
 			if (FNumericProperty* Num = CastField<FNumericProperty>(*It))
 			{
-				if (Normalise(It->GetName()) == Target || Normalise(It->GetDisplayNameText().ToString()) == Target)
+                if (Normalise(It->GetName()) == Target)
 				{
 					return Num;
 				}
@@ -41,11 +41,7 @@ namespace
 		return P->IsFloatingPoint() ? P->GetFloatingPointPropertyValue(Ptr) : (double)P->GetSignedIntPropertyValue(Ptr);
 	}
 
-    bool bMatch = Normalise(It->GetName()) == Target;
-#if WITH_EDITOR
-    if (!bMatch) { bMatch = Normalise(It->GetDisplayNameText().ToString()) == Target; }
-#endif
-    if (bMatch)
+    void WriteNumber(FNumericProperty* P, void* Ptr, double V)
 	{
 		if (P->IsFloatingPoint()) { P->SetFloatingPointPropertyValue(Ptr, V); }
 		else { P->SetIntPropertyValue(Ptr, (int64)FMath::RoundToInt(V)); }
