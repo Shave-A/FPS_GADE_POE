@@ -77,17 +77,20 @@ void UMatchManager::StartMatch()
 
 void UMatchManager::Tick(float DeltaTime)
 {
-    if (!bMatchActive) return;
-
-    // Not called while the game is paused, so the timer stops during the pause menu
+    // Pause works in every gameplay level (arena and firing range), but not on the main menu
     if (APlayerController* PC = GetWorld()->GetFirstPlayerController())
     {
-        if (PC->WasInputKeyJustPressed(EKeys::Escape))
+        if (PC->WasInputKeyJustPressed(EKeys::Escape) || PC->WasInputKeyJustPressed(EKeys::P))
         {
-            PauseGame();
-            return;
+            if (UGameplayStatics::GetCurrentLevelName(this, true) != TEXT("MainMenu"))
+            {
+                PauseGame();
+                return;
+            }
         }
     }
+
+    if (!bMatchActive) return;
 
     TimeRemaining = FMath::Max(0.f, TimeRemaining - DeltaTime);
     if (TimeRemaining <= 0.f)
@@ -209,7 +212,7 @@ void UMatchManager::SetGameplayInput()
 
 void UMatchManager::PauseGame()
 {
-    if (!bMatchActive || bPaused) return;
+    if (bPaused || MatchOverWidget) return;
 
     const UMatchSettings* Settings = GetDefault<UMatchSettings>();
     APlayerController* PC = GetWorld()->GetFirstPlayerController();
