@@ -59,7 +59,7 @@ void ULeaderboardWidget::Refresh()
 
                 UHorizontalBoxSlot* Slot = Cells->AddChildToHorizontalBox(Label);
                 FSlateChildSize Size;
-                Size.SizeRule = ESlateSizeRule::Fill;
+                Size.SizeRule = ESlateSizeRule::Automatic;
                 Size.Value = Weight;
                 Slot->SetSize(Size);
                 Slot->SetPadding(FMargin(8.f, 0.f));
