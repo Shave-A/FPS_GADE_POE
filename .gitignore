@@ -1,5 +1,9 @@
-Binaries
-DerivedDataCache
+Binaries/*
+!Binaries/Win64/
+Binaries/Win64/*
+!Binaries/Win64/UnrealEditor-FPS_GADE_POE.dll
+!Binaries/Win64/UnrealEditor.modules
+!Binaries/Win64/FPS_GADE_POEEditor.targetDerivedDataCache
 Intermediate
 Saved
 .vscode
